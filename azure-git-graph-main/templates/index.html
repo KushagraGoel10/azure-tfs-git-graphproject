@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="app-header">
+    <div class="header-inner">
+        <div>
+            <p class="eyebrow">TFVC dashboard</p>
+            <h1>SLAM CONTRIBUTION</h1>
+        </div>
+
+        <div class="header-actions">
+            <nav class="project-navigation" aria-label="Project navigation">
+                <a
+                    href="{{ url_for('index', source='application') }}"
+                    class="{% if source == 'application' %}active{% endif %}"
+                >
+                    Application
+                </a>
+
+                <a
+                    href="{{ url_for('index', source='report_dev') }}"
+                    class="{% if source == 'report_dev' %}active{% endif %}"
+                >
+                    Reports
+                </a>
+            </nav>
+
+            <form class="developer-form">
+                <label for="developer">Developer</label>
+                <select id="developer" name="developer">
+    <option value="" disabled selected>Please select a developer</option>
+
+    {% for developer in developers %}
+        <option
+            value="{{ developer }}"
+            {% if developer == selected_developer %}
+                selected
+            {% endif %}
+        >
+            {{ developer }}
+        </option>
+    {% endfor %}
+</select>
+            </form>
+        </div>
+    </div>
+</header>
+
+<main class="page">
+    <div id="loadingSpinner" class="loading-spinner" aria-live="polite">
+        <span></span>
+        Updating dashboard
+    </div>
+
+{% if error_message %}
+    <div class="alert">
+        {{ error_message }}
+    </div>
+{% endif %}
+
+{% if not developers %}
+    <section class="panel empty-state">
+        <h2>No contributions found</h2>
+        <p>The dashboard is ready, but there is no TFVC changeset data to display yet.</p>
+    </section>
+{% endif %}
+
+<section>
+        <div class="section-heading statistics-heading">
+
+    <span id="selectedDeveloperLabel">
+        {{ selected_developer or "No developer selected" }}
+    </span>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="section-heading statistics-heading">
+        
+    <h2>Statistics</h2>
+
+    
+
+    <span></span>
+</div>
+    <dl class="stats-grid">
+        <!-- <div>
+            <dt>Total Project Changesets</dt>
+            <dd id="totalProjectChangesets">{{ total_project_changesets }}</dd>
+        </div> -->
+        <div class="summary-card user-contributions-card">
+            <dt>Total User Contributions - SLAM APPLICATION + REPORTS</dt>
+            <dd>
+                <span id="userContributionsTotal" class="user-contributions-total">
+                    {{ selected_user_contribution_totals.total }}
+                </span>
+                <span id="userContributionsBreakdown" class="user-contributions-breakdown">
+                    Application {{ selected_user_contribution_totals.application }} &middot; Reports {{ selected_user_contribution_totals.reports }}
+                </span>
+            </dd>
+        </div>
+        <div>
+            <dt>User Contributions</dt>
+            <dd data-stat="selected_user_contributions">{{ statistics.selected_user_contributions }}</dd>
+        </div>
+        <div>
+            <dt>Current Streak</dt>
+            <dd data-stat="current_streak">{{ statistics.current_streak }}</dd>
+        </div>
+        <div>
+            <dt>Longest Streak</dt>
+            <dd data-stat="longest_streak">{{ statistics.longest_streak }}</dd>
+        </div>
+        <div>
+            <dt>Most Active Day</dt>
+            <dd data-stat="most_active_day">{{ statistics.most_active_day }}</dd>
+        </div>
+        <div>
+            <dt>Most Active Weekday</dt>
+            <dd data-stat="most_active_weekday">{{ statistics.most_active_weekday }}</dd>
+        </div>
+        <div>
+            <dt>Most Active Month</dt>
+            <dd data-stat="most_active_month">{{ statistics.most_active_month }}</dd>
+        </div>
+        <div>
+            <dt>Average Contributions Per Day</dt>
+            <dd data-stat="average_contributions_per_day">{{ statistics.average_contributions_per_day }}</dd>
+        </div>
+        <!-- <div class="summary-card">
+            <dt>Contribution Calendar Summary</dt>
+            <dd data-stat="calendar_summary">{{ statistics.calendar_summary }}</dd>
+        </div> -->
+        
+    </dl>
+</section>
+
+<section class="panel top-contributors-panel">
+    <div class="section-heading">
+        <h2>Top Contributors - SLAM PROJECT </h2>
+        <div class="top-contributors-filter">
+            <label for="topContributorYear">Year</label>
+            <select id="topContributorYear" {% if not top_contributor_years %}disabled{% endif %}>
+                {% for year in top_contributor_years %}
+                    <option value="{{ year }}" {% if year|string == selected_top_contributor_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div id="topContributorsList" class="top-contributors-list">
+        {% if top_contributors %}
+            {% for contributor in top_contributors %}
+                <article class="top-contributor-row rank-{{ loop.index }}">
+                    <div class="top-contributor-rank" aria-label="Rank {{ loop.index }}">
+                        {{ loop.index }}
+                    </div>
+                    <div class="top-contributor-name">
+                        {{ contributor.developer }}
+                    </div>
+                    <div class="top-contributor-count">
+                        <strong>{{ contributor.contributions }}</strong>
+                        <span>contributions</span>
+                    </div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="top-contributors-empty">
+                No contributors are available for this source yet.
+            </div>
+        {% endif %}
+    </div>
+    <template id="topContributorsEmptyTemplate">
+        <div class="top-contributors-empty">
+            No contributors are available for this source yet.
+        </div>
+    </template>
+</section>
+
+<section class="panel heatmap-panel">
+    <div class="section-heading">
+        <h2>Contribution Heatmap</h2>
+        <span>Last 365 days</span>
+    </div>
+    <div class="heatmap-scroll">
+        <div class="heatmap-layout">
+            <div class="weekday-labels" aria-hidden="true">
+                <span></span>
+                <span>Mon</span>
+                <span></span>
+                <span>Wed</span>
+                <span></span>
+                <span>Fri</span>
+                <span></span>
+            </div>
+            <div>
+                <div id="monthLabels" class="month-labels" aria-hidden="true"></div>
+                <div id="heatmapGrid" class="heatmap-grid" aria-label="Contribution heatmap"></div>
+            </div>
+        </div>
+    </div>
+    <div class="heatmap-footer">
+        <span>Less</span>
+        <span class="legend-cell level-0"></span>
+        <span class="legend-cell level-1"></span>
+        <span class="legend-cell level-2"></span>
+        <span class="legend-cell level-3"></span>
+        <span class="legend-cell level-4"></span>
+        <span>More</span>
+    </div>
+</section>
+
+<section class="panel details-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Changeset Details</h2>
+            <span id="detailsSubtitle">Select a heatmap square to inspect a day</span>
+        </div>
+        <span id="detailsCount">0 changesets</span>
+    </div>
+    <div id="detailsEmptyState" class="details-empty">
+        Click a contribution square to see changeset IDs, comments, and times for that day.
+    </div>
+    <div id="changesetList" class="changeset-list" aria-live="polite"></div>
+</section>
+
+<div id="heatmapTooltip" class="tooltip" role="tooltip"></div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script id="dashboardData" type="application/json">
+    {{ {
+        "source": source,
+        "selectedDeveloper": selected_developer,
+        "topContributors": top_contributors,
+        "selectedTopContributorYear": selected_top_contributor_year,
+        "topContributorYears": top_contributor_years,
+        "topContributorsByYear": top_contributors_by_year,
+        "userContributionTotals": user_contribution_totals_by_developer,
+        "heatmapDates": heatmap_dates,
+        "developerStatistics": developer_statistics,
+        "contributionCounts": contribution_counts_by_developer_and_date,
+        "changesetDetails": changeset_details_by_developer_and_date
+    }|tojson }}
+</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}
